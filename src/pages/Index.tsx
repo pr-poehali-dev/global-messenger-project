@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AuthPage from "@/components/AuthPage";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import VideoCall from "@/components/VideoCall";
+import { apiGetChats, apiGetMessages, apiSendMessage, apiLogout, getSavedUser } from "@/lib/api";
 
 export type Chat = {
   id: number;
@@ -26,60 +27,88 @@ export type Message = {
   senderName?: string;
 };
 
-const CHATS: Chat[] = [
-  { id: 1, name: "Алина Морозова", avatar: "АМ", lastMessage: "Окей, увидимся завтра!", time: "14:32", unread: 2, online: true, type: "personal" },
-  { id: 2, name: "Дизайн команда", avatar: "ДК", lastMessage: "Макеты готовы, смотри 👀", time: "13:10", unread: 5, online: false, type: "group", members: 8 },
-  { id: 3, name: "Максим Волков", avatar: "МВ", lastMessage: "Отличная идея!", time: "12:44", unread: 0, online: true, type: "personal" },
-  { id: 4, name: "Запуск продукта", avatar: "ЗП", lastMessage: "Дедлайн — пятница", time: "11:00", unread: 12, online: false, type: "group", members: 15 },
-  { id: 5, name: "Соня Иванова", avatar: "СИ", lastMessage: "Пришлёшь файл?", time: "вчера", unread: 0, online: false, type: "personal" },
-  { id: 6, name: "Dev Team", avatar: "DT", lastMessage: "Деплой прошёл успешно 🚀", time: "вчера", unread: 3, online: false, type: "group", members: 6 },
-  { id: 7, name: "Кирилл Новиков", avatar: "КН", lastMessage: "Созвонимся?", time: "вчера", unread: 0, online: true, type: "personal" },
-];
-
-const MESSAGES: Message[] = [
-  { id: 1, chatId: 1, text: "Привет! Как дела с проектом?", time: "14:20", mine: false, avatar: "АМ" },
-  { id: 2, chatId: 1, text: "Всё идёт по плану, почти готово!", time: "14:21", mine: true },
-  { id: 3, chatId: 1, text: "Классно! Когда покажешь?", time: "14:22", mine: false, avatar: "АМ" },
-  { id: 4, chatId: 1, text: "Завтра утром пришлю первую версию 🔥", time: "14:28", mine: true },
-  { id: 5, chatId: 1, text: "Окей, увидимся завтра!", time: "14:32", mine: false, avatar: "АМ" },
-  { id: 6, chatId: 2, text: "Всем привет! Сегодня созвон в 15:00", time: "10:00", mine: false, avatar: "ДК", senderName: "Артём" },
-  { id: 7, chatId: 2, text: "Буду!", time: "10:05", mine: true },
-  { id: 8, chatId: 2, text: "Я тоже подключусь", time: "10:08", mine: false, avatar: "СИ", senderName: "Соня" },
-  { id: 9, chatId: 2, text: "Макеты готовы, смотри 👀", time: "13:10", mine: false, avatar: "МВ", senderName: "Максим" },
-  { id: 10, chatId: 3, text: "Привет, слушай, есть идея!", time: "12:30", mine: false, avatar: "МВ" },
-  { id: 11, chatId: 3, text: "Давай, рассказывай!", time: "12:35", mine: true },
-  { id: 12, chatId: 3, text: "Отличная идея!", time: "12:44", mine: true },
-];
-
 export default function Index() {
-  const [user, setUser] = useState<string | null>(null);
-  const [activeChatId, setActiveChatId] = useState<number>(1);
-  const [messages, setMessages] = useState<Message[]>(MESSAGES);
+  const [user, setUser] = useState<{ id: number; name: string } | null>(getSavedUser);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingChats, setLoadingChats] = useState(false);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [videoCallActive, setVideoCallActive] = useState(false);
   const [videoCallChat, setVideoCallChat] = useState<Chat | null>(null);
 
-  if (!user) {
-    return <AuthPage onAuth={(name) => setUser(name)} />;
-  }
+  const loadChats = useCallback(async () => {
+    setLoadingChats(true);
+    try {
+      const data = await apiGetChats();
+      setChats(data);
+      if (data.length > 0 && !activeChatId) setActiveChatId(data[0].id);
+    } catch {
+      // нет чатов или ошибка
+    } finally {
+      setLoadingChats(false);
+    }
+  }, [activeChatId]);
 
-  const activeChat = CHATS.find((c) => c.id === activeChatId)!;
-  const chatMessages = messages.filter((m) => m.chatId === activeChatId);
+  const loadMessages = useCallback(async (chatId: number) => {
+    setLoadingMsgs(true);
+    try {
+      const data = await apiGetMessages(chatId);
+      const mapped: Message[] = data.map((m: Message & { chatId?: number }) => ({ ...m, chatId }));
+      setMessages(mapped);
+    } catch {
+      setMessages([]);
+    } finally {
+      setLoadingMsgs(false);
+    }
+  }, []);
 
-  const sendMessage = (text: string) => {
-    const newMsg: Message = {
+  useEffect(() => {
+    if (user) loadChats();
+  }, [user]);
+
+  useEffect(() => {
+    if (activeChatId) loadMessages(activeChatId);
+  }, [activeChatId]);
+
+  const handleSelectChat = (id: number) => {
+    setActiveChatId(id);
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!activeChatId) return;
+    const tempMsg: Message = {
       id: Date.now(),
       chatId: activeChatId,
       text,
       time: new Date().toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" }),
       mine: true,
     };
-    setMessages((prev) => [...prev, newMsg]);
+    setMessages((prev) => [...prev, tempMsg]);
+    try {
+      await apiSendMessage(activeChatId, text);
+    } catch {
+      // сообщение уже показано локально
+    }
   };
 
-  const startVideoCall = () => {
-    setVideoCallChat(activeChat);
-    setVideoCallActive(true);
+  const handleLogout = () => {
+    apiLogout();
+    setUser(null);
+    setChats([]);
+    setMessages([]);
+    setActiveChatId(null);
   };
+
+  if (!user) {
+    return <AuthPage onAuth={(name) => {
+      const saved = getSavedUser();
+      setUser(saved || { id: 0, name });
+    }} />;
+  }
+
+  const activeChat = chats.find((c) => c.id === activeChatId) || null;
+  const chatMessages = messages.filter((m) => m.chatId === activeChatId);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden chat-bg">
@@ -93,8 +122,33 @@ export default function Index() {
       </div>
 
       <div className="relative z-10 flex w-full h-full">
-        <Sidebar chats={CHATS} activeChatId={activeChatId} onSelectChat={setActiveChatId} userName={user} onLogout={() => setUser(null)} />
-        <ChatWindow chat={activeChat} messages={chatMessages} onSend={sendMessage} onVideoCall={startVideoCall} />
+        <Sidebar
+          chats={chats}
+          activeChatId={activeChatId ?? 0}
+          onSelectChat={handleSelectChat}
+          userName={user.name}
+          onLogout={handleLogout}
+          loading={loadingChats}
+        />
+        {activeChat ? (
+          <ChatWindow
+            chat={activeChat}
+            messages={chatMessages}
+            onSend={sendMessage}
+            onVideoCall={() => { setVideoCallChat(activeChat); setVideoCallActive(true); }}
+            loading={loadingMsgs}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-2"
+              style={{ background: "linear-gradient(135deg, #a855f7, #ec4899)" }}>
+              <span className="text-white font-black text-3xl">T</span>
+            </div>
+            <p className="text-white/30 text-sm">
+              {loadingChats ? "Загружаем чаты..." : "Выбери чат или создай новый"}
+            </p>
+          </div>
+        )}
       </div>
 
       {videoCallActive && videoCallChat && (

@@ -8,6 +8,7 @@ interface Props {
   onSelectChat: (id: number) => void;
   userName: string;
   onLogout: () => void;
+  loading?: boolean;
 }
 
 const AVATAR_GRADIENTS = [
@@ -20,7 +21,7 @@ const AVATAR_GRADIENTS = [
   "from-rose-500 to-pink-500",
 ];
 
-export default function Sidebar({ chats, activeChatId, onSelectChat, userName, onLogout }: Props) {
+export default function Sidebar({ chats, activeChatId, onSelectChat, userName, onLogout, loading }: Props) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "personal" | "group">("all");
 
@@ -79,7 +80,26 @@ export default function Sidebar({ chats, activeChatId, onSelectChat, userName, o
 
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-4">
-        {filtered.map((chat, i) => {
+        {loading && (
+          <div className="flex flex-col gap-2 px-1 pt-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="flex items-center gap-3 px-3 py-3 rounded-2xl glass animate-pulse">
+                <div className="w-11 h-11 rounded-2xl bg-white/10 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-white/10 rounded-full w-3/4" />
+                  <div className="h-2.5 bg-white/6 rounded-full w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && chats.length === 0 && (
+          <div className="text-center pt-10 px-4">
+            <p className="text-white/20 text-sm">Чатов пока нет</p>
+            <p className="text-white/10 text-xs mt-1">Создай первый чат!</p>
+          </div>
+        )}
+        {!loading && filtered.map((chat, i) => {
           const isActive = chat.id === activeChatId;
           const grad = AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length];
           return (

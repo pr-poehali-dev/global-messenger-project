@@ -7,6 +7,7 @@ interface Props {
   messages: Message[];
   onSend: (text: string) => void;
   onVideoCall: () => void;
+  loading?: boolean;
 }
 
 const AVATAR_GRADIENTS = [
@@ -23,7 +24,7 @@ function getGradient(str: string) {
   return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
 }
 
-export default function ChatWindow({ chat, messages, onSend, onVideoCall }: Props) {
+export default function ChatWindow({ chat, messages, onSend, onVideoCall, loading }: Props) {
   const [input, setInput] = useState("");
   const [showTyping, setShowTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,23 @@ export default function ChatWindow({ chat, messages, onSend, onVideoCall }: Prop
           <span className="text-[11px] text-white/25 px-2">Сегодня</span>
           <div className="flex-1 h-px bg-white/5" />
         </div>
+
+        {loading && (
+          <div className="flex flex-col gap-3 py-2">
+            {[1,2,3].map(i => (
+              <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
+                <div className="glass rounded-2xl px-4 py-3 animate-pulse" style={{ width: `${120 + i * 40}px`, height: "36px" }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 gap-2">
+            <p className="text-white/20 text-sm">Нет сообщений</p>
+            <p className="text-white/10 text-xs">Напиши первым!</p>
+          </div>
+        )}
 
         {messages.map((msg, i) => {
           const isFirst = i === 0 || messages[i - 1].mine !== msg.mine;

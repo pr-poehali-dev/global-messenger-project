@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { apiLogin, apiRegister } from "@/lib/api";
 
 interface Props {
   onAuth: (name: string) => void;
@@ -14,7 +15,7 @@ export default function AuthPage({ onAuth }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -37,10 +38,19 @@ export default function AuthPage({ onAuth }: Props) {
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
+      let user;
+      if (mode === "register") {
+        user = await apiRegister(name.trim(), phone.trim(), password);
+      } else {
+        user = await apiLogin(phone.trim(), password);
+      }
+      onAuth(user.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Произошла ошибка");
+    } finally {
       setLoading(false);
-      onAuth(mode === "register" ? name.trim() : "Пользователь");
-    }, 1200);
+    }
   };
 
   return (
