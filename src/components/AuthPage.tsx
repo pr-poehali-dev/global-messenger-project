@@ -8,7 +8,7 @@ interface Props {
 export default function AuthPage({ onAuth }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,12 +18,17 @@ export default function AuthPage({ onAuth }: Props) {
     e.preventDefault();
     setError("");
 
-    if (!email.trim() || !password.trim()) {
+    if (!phone.trim() || !password.trim()) {
       setError("Заполни все поля");
       return;
     }
     if (mode === "register" && !name.trim()) {
       setError("Введи своё имя");
+      return;
+    }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      setError("Введи корректный номер телефона");
       return;
     }
     if (password.length < 6) {
@@ -34,7 +39,7 @@ export default function AuthPage({ onAuth }: Props) {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      onAuth(mode === "register" ? name.trim() : email.split("@")[0]);
+      onAuth(mode === "register" ? name.trim() : "Пользователь");
     }, 1200);
   };
 
@@ -119,14 +124,17 @@ export default function AuthPage({ onAuth }: Props) {
             )}
 
             <div>
-              <label className="block text-xs text-white/40 mb-1.5 pl-1">Email</label>
+              <label className="block text-xs text-white/40 mb-1.5 pl-1">Номер телефона</label>
               <div className="relative">
-                <Icon name="Mail" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/25" />
+                <Icon name="Phone" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/25" />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@mail.ru"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^\d+\s\-()]/g, "");
+                    setPhone(val);
+                  }}
+                  placeholder="+7 (999) 999-99-99"
                   className="w-full bg-white/5 border border-white/8 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-purple-500/50 focus:bg-white/8 transition-all"
                 />
               </div>
