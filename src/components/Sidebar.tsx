@@ -6,6 +6,8 @@ interface Props {
   chats: Chat[];
   activeChatId: number;
   onSelectChat: (id: number) => void;
+  userName: string;
+  onLogout: () => void;
 }
 
 const AVATAR_GRADIENTS = [
@@ -18,7 +20,7 @@ const AVATAR_GRADIENTS = [
   "from-rose-500 to-pink-500",
 ];
 
-export default function Sidebar({ chats, activeChatId, onSelectChat }: Props) {
+export default function Sidebar({ chats, activeChatId, onSelectChat, userName, onLogout }: Props) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "personal" | "group">("all");
 
@@ -128,15 +130,21 @@ export default function Sidebar({ chats, activeChatId, onSelectChat }: Props) {
 
       {/* Profile */}
       <div className="p-4 border-t border-white/5">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 cursor-pointer transition-all group">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all group">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            ВЫ
+            {userName.slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-600 text-white/90 truncate">Мой профиль</div>
+            <div className="text-sm font-600 text-white/90 truncate">{userName}</div>
             <div className="text-xs text-emerald-400">● В сети</div>
           </div>
-          <Icon name="Settings" size={15} className="text-white/25 group-hover:text-white/50 transition-colors" />
+          <button
+            onClick={onLogout}
+            title="Выйти"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          >
+            <Icon name="LogOut" size={14} />
+          </button>
         </div>
       </div>
     </aside>
